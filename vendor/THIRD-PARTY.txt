@@ -1,0 +1,5 @@
+SheetJS Community Edition 0.18.5
+Copyright (C) 2012-present SheetJS LLC
+License: Apache License, Version 2.0
+Source: https://github.com/SheetJS/sheetjs
+License text: LICENSE-Apache-2.0.txt

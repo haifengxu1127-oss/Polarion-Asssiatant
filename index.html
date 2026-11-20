@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Polarion Requirement Assistant</title>
+  <link rel="icon" href="./icon.png" type="image/png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="identity"><img src="./icon.png" alt="" width="44" height="44"><div><strong>Polarion Requirement Assistant</strong><span>SharePoint files to a reviewable Polarion Excel file</span></div></div>
+      <span class="local-badge">Browser-local processing</span>
+    </header>
+
+    <section class="intro">
+      <p class="eyebrow">DOCUMENT WORKFLOW</p>
+      <h1>Turn customer requirements into a Polarion Excel file.</h1>
+      <p>Combine original SharePoint links with document names and GitHub Copilot suggestions from the VS Code extension. Review every row before exporting.</p>
+      <div class="notice">This hosted page cannot call VS Code's GitHub Copilot. Run AI analysis in the VS Code extension, then import its Excel results here. No selected document or spreadsheet is uploaded by this page.</div>
+    </section>
+
+    <div class="steps">
+      <section class="card" aria-labelledby="links-title">
+        <div class="section-heading"><span class="number">01</span><div><h2 id="links-title">SharePoint links</h2><p>Import an Excel or CSV list with <b>File Title</b> and <b>Hyperlink</b>. Original links only; missing links stay blank.</p></div></div>
+        <div class="control-row"><label class="button primary" for="links-file">Import link list Excel<input id="links-file" type="file" accept=".xlsx,.xls,.csv" hidden></label><span id="links-name" class="file-name">No file selected</span></div>
+      </section>
+
+      <section class="card" aria-labelledby="docs-title">
+        <div class="section-heading"><span class="number">02</span><div><h2 id="docs-title">Source documents</h2><p>Select your locally synced SharePoint folder to add file titles. Clicking a title opens the file you selected in this browser session.</p></div></div>
+        <div class="control-row"><label class="button primary" for="folder-file">Choose synced folder<input id="folder-file" type="file" webkitdirectory directory multiple hidden></label><span id="folder-name" class="file-name">No folder selected</span></div>
+      </section>
+
+      <section class="card" aria-labelledby="ai-title">
+        <div class="section-heading"><span class="number">03</span><div><h2 id="ai-title">GitHub Copilot analysis</h2><p>Use the installed VS Code extension to analyze PDF, Word, or text documents. Import its exported Excel to bring in suggested Priority and Scope values.</p></div></div>
+        <div class="control-row"><label class="button primary" for="analysis-file">Import Copilot results<input id="analysis-file" type="file" accept=".xlsx,.xls,.csv" hidden></label><span id="analysis-name" class="file-name">No file selected</span></div>
+      </section>
+    </div>
+
+    <section class="card review" aria-labelledby="review-title">
+      <div class="review-heading"><div class="section-heading"><span class="number">04</span><div><h2 id="review-title">Review &amp; export</h2><p>Priority and Scope are suggestions. Check the source document and original SharePoint link before saving.</p></div></div><div class="actions"><button id="add-row" class="button secondary" type="button">Add row</button><button id="export" class="button primary" type="button" disabled>Export Excel</button></div></div>
+      <div id="status" role="status" aria-live="polite">Import a folder or spreadsheet to begin.</div>
+      <div class="table-wrap"><table><thead><tr><th>File Title</th><th>Hyperlink</th><th>Priority</th><th>Scope(s)</th><th><span class="sr-only">Remove</span></th></tr></thead><tbody id="rows"><tr><td colspan="5" class="empty">No documents yet.</td></tr></tbody></table></div>
+      <p class="footnote">Exported columns: File Title, Hyperlink, Priority, Scope. Confirm the field mapping in your Polarion environment before import.</p>
+    </section>
+    <footer>Static GitHub Pages app · Spreadsheet and document selections stay in your browser session</footer>
+  </main>
+  <script src="./vendor/xlsx.full.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
