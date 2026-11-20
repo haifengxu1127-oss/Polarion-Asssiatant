@@ -1,0 +1,7 @@
+.git
+.copilot
+server/.env
+server/node_modules
+*.vsix
+*.xlsx
+*.csv

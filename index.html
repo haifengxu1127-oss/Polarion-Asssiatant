@@ -12,14 +12,14 @@
   <main class="shell">
     <header class="topbar">
       <div class="identity"><img src="./icon.png" alt="" width="44" height="44"><div><strong>Polarion Requirement Assistant</strong><span>SharePoint files to a reviewable Polarion Excel file</span></div></div>
-      <span class="local-badge">Browser-local processing</span>
+      <span class="local-badge">Cloud Copilot service</span>
     </header>
 
     <section class="intro">
       <p class="eyebrow">DOCUMENT WORKFLOW</p>
       <h1>Turn customer requirements into a Polarion Excel file.</h1>
-      <p>Combine original SharePoint links with document names and GitHub Copilot suggestions from the VS Code extension. Review every row before exporting.</p>
-      <div class="notice">This hosted page cannot call VS Code's GitHub Copilot. Run AI analysis in the VS Code extension, then import its Excel results here. No selected document or spreadsheet is uploaded by this page.</div>
+      <p>Combine original SharePoint links with document names and GitHub Copilot suggestions. Review every row before exporting.</p>
+      <div class="notice">Cloud analysis uploads each selected document to this service and sends extracted text to GitHub Copilot under your own GitHub account. Do not upload confidential documents unless your organization has approved this service.</div>
     </section>
 
     <div class="steps">
@@ -34,8 +34,14 @@
       </section>
 
       <section class="card" aria-labelledby="ai-title">
-        <div class="section-heading"><span class="number">03</span><div><h2 id="ai-title">GitHub Copilot analysis</h2><p>Use the installed VS Code extension to analyze PDF, Word, or text documents. Import its exported Excel to bring in suggested Priority and Scope values.</p></div></div>
-        <div class="control-row"><label class="button primary" for="analysis-file">Import Copilot results<input id="analysis-file" type="file" accept=".xlsx,.xls,.csv" hidden></label><span id="analysis-name" class="file-name">No file selected</span></div>
+        <div class="section-heading"><span class="number">03</span><div><h2 id="ai-title">GitHub Copilot cloud analysis</h2><p>Sign in with a GitHub account that has Copilot access. The service analyzes selected PDF, Word, or text documents without a local extension.</p></div></div>
+        <div class="copilot-controls">
+          <div class="control-row"><button id="copilot-login" class="button primary" type="button">Sign in with GitHub</button><button id="copilot-logout" class="button secondary" type="button" hidden>Sign out</button><span id="copilot-user" class="file-name">Not signed in</span></div>
+          <label class="scope-label" for="ai-scopes">Allowed Scope values (one per line)</label>
+          <textarea id="ai-scopes" rows="3" placeholder="e.g.&#10;SW&#10;PM" aria-label="Allowed Scope values, one per line"></textarea>
+          <div class="control-row"><button id="copilot-analyze" class="button primary" type="button" disabled>Analyze selected documents</button></div>
+          <details class="legacy-import"><summary>Import results from an existing Copilot workflow</summary><div class="control-row"><label class="button secondary" for="analysis-file">Import Copilot results<input id="analysis-file" type="file" accept=".xlsx,.xls,.csv" hidden></label><span id="analysis-name" class="file-name">No file selected</span></div></details>
+        </div>
       </section>
     </div>
 
@@ -45,7 +51,7 @@
       <div class="table-wrap"><table><thead><tr><th>File Title</th><th>Hyperlink</th><th>Priority</th><th>Scope(s)</th><th><span class="sr-only">Remove</span></th></tr></thead><tbody id="rows"><tr><td colspan="5" class="empty">No documents yet.</td></tr></tbody></table></div>
       <p class="footnote">Exported columns: File Title, Hyperlink, Priority, Scope. Confirm the field mapping in your Polarion environment before import.</p>
     </section>
-    <footer>Static GitHub Pages app · Spreadsheet and document selections stay in your browser session</footer>
+    <footer>Cloud service · Sign in with GitHub to analyze documents using your Copilot access</footer>
   </main>
   <script src="./vendor/xlsx.full.min.js"></script>
   <script src="./app.js"></script>

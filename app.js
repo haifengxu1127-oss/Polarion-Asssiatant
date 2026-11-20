@@ -1,14 +1,67 @@
-/* All spreadsheet and folder processing happens in this browser tab. */
+/* Spreadsheet review stays in the browser; Copilot analysis uses the same-origin cloud API. */
 const $ = id => document.getElementById(id);
 const rows = [];
 const fileUrls = new Map();
 const priorities = ['', '0', '30', '50', '70', '100'];
 const supported = /\.(pdf|docx|txt|md)$/i;
 let nextId = 1;
+let copilotSessionToken = sessionStorage.getItem('copilot-session');
+let copilotUser = null;
 
 function setStatus(message, error = false) {
   $('status').textContent = message;
   $('status').classList.toggle('error', error);
+}
+
+function updateCopilotControls() {
+  $('copilot-login').hidden = Boolean(copilotUser);
+  $('copilot-logout').hidden = !copilotUser;
+  $('copilot-user').textContent = copilotUser ? `Signed in as ${copilotUser.login}` : 'Not signed in';
+  $('copilot-analyze').disabled = !copilotUser || !rows.some(row => row.file);
+}
+
+function clearCopilotSession() {
+  copilotSessionToken = null;
+  copilotUser = null;
+  sessionStorage.removeItem('copilot-session');
+  updateCopilotControls();
+}
+
+async function copilotRequest(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  if (copilotSessionToken) headers.set('Authorization', `Bearer ${copilotSessionToken}`);
+  if (options.body) headers.set('Content-Type', 'application/json');
+  const response = await fetch(path, { ...options, headers, cache: 'no-store' });
+  let result;
+  try { result = await response.json(); }
+  catch { throw new Error('The cloud service returned an invalid response.'); }
+  if (response.status === 401) clearCopilotSession();
+  if (!response.ok) throw new Error(result.error || 'The cloud service request failed.');
+  return result;
+}
+
+async function restoreCopilotSession() {
+  const fragment = new URLSearchParams(location.hash.slice(1));
+  const loginToken = fragment.get('session');
+  if (fragment.has('session')) {
+    if (/^[a-f0-9]{64}$/.test(loginToken || '')) {
+      copilotSessionToken = loginToken;
+      sessionStorage.setItem('copilot-session', loginToken);
+    }
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+  const authError = new URLSearchParams(location.search).get('auth_error');
+  if (authError === 'github') setStatus('GitHub sign-in did not complete. Please try again.', true);
+  if (authError === 'not_allowed') setStatus('This GitHub account is not authorized for this service. Ask the owner to add your GitHub login.', true);
+  if (!copilotSessionToken) { updateCopilotControls(); return; }
+  try {
+    const result = await copilotRequest('/api/me');
+    copilotUser = result.user;
+  } catch (error) {
+    clearCopilotSession();
+    setStatus(error.message, true);
+  }
+  updateCopilotControls();
 }
 
 function normalized(value) {
@@ -76,6 +129,7 @@ function render() {
   const body = $('rows');
   body.replaceChildren();
   $('export').disabled = rows.length === 0;
+  updateCopilotControls();
   if (!rows.length) {
     const tr = body.insertRow();
     const td = tr.insertCell();
@@ -103,6 +157,12 @@ function render() {
       }
     } else {
       cellInput(titleCell, row.title, 'File Title', value => { row.title = value; });
+    }
+    if (row.error) {
+      const error = document.createElement('span');
+      error.className = 'row-error';
+      error.textContent = row.error;
+      titleCell.append(error);
     }
     const hyperlinkCell = tr.insertCell();
     cellInput(hyperlinkCell, row.hyperlink, `SharePoint Hyperlink for ${row.title}`, value => {
@@ -178,6 +238,60 @@ function wireSpreadsheetInput(id, labelId, kind) {
 wireSpreadsheetInput('links-file', 'links-name', 'links');
 wireSpreadsheetInput('analysis-file', 'analysis-name', 'analysis');
 
+$('copilot-login').addEventListener('click', () => { window.location.assign('/auth/login'); });
+
+$('copilot-logout').addEventListener('click', async () => {
+  try {
+    await copilotRequest('/api/logout', { method: 'POST' });
+    clearCopilotSession();
+    setStatus('Signed out of GitHub.');
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+});
+
+async function fileAsBase64(file) {
+  if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name} exceeds the 10 MB per-file limit.`);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return btoa(binary);
+}
+
+$('copilot-analyze').addEventListener('click', async () => {
+  const selected = rows.filter(row => row.file);
+  const scopes = [...new Set($('ai-scopes').value.split(/\r?\n/).map(value => value.trim()).filter(Boolean))];
+  if (!copilotSessionToken) { setStatus('Sign in with GitHub before starting analysis.', true); return; }
+  if (!selected.length) { setStatus('Choose a folder containing supported documents first.', true); return; }
+  if (!scopes.length) { setStatus('Enter at least one allowed Scope value.', true); return; }
+  if (scopes.length > 100) { setStatus('Enter no more than 100 allowed Scope values.', true); return; }
+  $('copilot-analyze').disabled = true;
+  let completed = 0, failed = 0;
+  for (const [index, row] of selected.entries()) {
+    try {
+      setStatus(`Uploading and analyzing ${index + 1} of ${selected.length}: ${row.title}`);
+      const contentBase64 = await fileAsBase64(row.file);
+      const suggestion = await copilotRequest('/api/analyze', {
+        method: 'POST',
+        body: JSON.stringify({ filename: row.file.name, contentBase64, scopes })
+      });
+      row.priority = suggestion.priority;
+      row.scope = suggestion.scope;
+      row.reason = suggestion.reason;
+      delete row.error;
+      completed++;
+    } catch (error) {
+      row.error = error.message;
+      failed++;
+    }
+    render();
+    if (!copilotSessionToken) break;
+  }
+  setStatus(`Cloud Copilot analysis finished: ${completed} succeeded, ${failed} need attention.${copilotSessionToken ? '' : ' Sign in again to continue.'}`, failed > 0 || !copilotSessionToken);
+});
+
 $('folder-file').addEventListener('change', event => {
   const files = [...(event.target.files || [])].filter(file => supported.test(file.name));
   if (!files.length) { setStatus('No supported PDF, Word, TXT, or Markdown files were found.', true); return; }
@@ -226,3 +340,4 @@ window.addEventListener('pagehide', () => {
 });
 
 render();
+restoreCopilotSession();
